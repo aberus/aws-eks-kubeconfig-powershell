@@ -19,6 +19,7 @@ Update-EKSKubeConfig
 #### Example
 ```powershell
 PS C:> Update-EKSKubeConfig -Name example -Region us-west-1
+Updated context arn:aws:eks:us-west-2:012345678910:cluster/example in /Users/ericn/.kube/config
 
 Context                                            Path
 -------                                            ----

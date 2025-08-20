@@ -56,6 +56,8 @@ function Update-EKSKubeConfig {
         .EXAMPLE
         Update-EKSKubeConfig -Name my-eks-cluster -KubeConfigPath "C:\path\to\config" -RoleArn "arn:aws:iam::123456789012:role/EKS-Role" -Alias my-cluster-alias -UserAlias my-user-alias -Region us-west-2
 
+        Updated context my-cluster-alias in C:\path\to\config
+
         Context          Path
         -------          ----
         my-cluster-alias C:\path\to\config
@@ -63,9 +65,11 @@ function Update-EKSKubeConfig {
         .EXAMPLE
         Update-EKSKubeConfig -Region eu-west-1 -Name my-eks-cluster -ProfileName user1
 
+        Updated context arn:aws:eks:us-west-2:012345678910:cluster/example in /Users/ericn/.kube/config
+
         Context                                            Path
         -------                                            ----
-        arn:aws:eks:us-west-2:012345678910:cluster/example /Users/ericn/.kube/config C:\path\to\config
+        arn:aws:eks:us-west-2:012345678910:cluster/example /Users/ericn/.kube/config
     #>
 
     [OutputType([PSCustomObject])]
@@ -129,8 +133,8 @@ function Update-EKSKubeConfig {
             {
                 param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
 
-                # allow for new user with no profiles set up yet
-                $profiles = Get-AWSCredentials -ListProfileDetail | Select-Object -expandproperty ProfileName
+                # Allow for new user with no profiles set up yet
+                $profiles = Get-AWSCredentials -ListProfileDetail | Select-Object -ExpandProperty ProfileName
                 if ($profiles) {
                     $profiles |
                     Sort-Object |
@@ -256,6 +260,8 @@ function Update-EKSKubeConfig {
 
     # Save updated kubeconfig
     $kubeConfig | ConvertTo-Yaml | Set-Content $kubeConfigPath
+
+    Write-Host "Updated context $contextName in $kubeConfigPath"
 
     [PSCustomObject]@{
         Context  = $contextName
@@ -418,8 +424,8 @@ function Get-EKSToken {
         {
             param ($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameter)
 
-            # allow for new user with no profiles set up yet
-            $profiles = Get-AWSCredentials -ListProfileDetail | Select-Object -expandproperty ProfileName
+            # Allow for new user with no profiles set up yet
+            $profiles = Get-AWSCredentials -ListProfileDetail | Select-Object -ExpandProperty ProfileName
             if ($profiles) {
                 $profiles |
                 Sort-Object |
@@ -448,12 +454,11 @@ function Get-EKSToken {
         }
     }
 
-    $region = [Amazon.RegionEndpoint]::GetBySystemName($Region)
     $credentials = Get-AwsCredential -ProfileName $ProfileName
 
     # Create the STS client configuration
     $config = New-Object Amazon.SecurityToken.AmazonSecurityTokenServiceConfig
-    $config.RegionEndpoint = $region
+    $config.RegionEndpoint = [Amazon.RegionEndpoint]::GetBySystemName($Region)
 
     # Create the GetCallerIdentity request
     $getCallerIdentityRequest = [Amazon.SecurityToken.Model.GetCallerIdentityRequest]::new()
@@ -464,7 +469,7 @@ function Get-EKSToken {
     # $request.Parameters.Add("Version", "2011-06-15")
     $request.UseQueryString = $true
     $request.HttpMethod = "GET"
-    $request.Endpoint = [UriBuilder]::new([Uri]::UriSchemeHttps, $config.RegionEndpoint.GetEndpointForService($config.AuthenticationServiceName).Hostname).Uri
+    $request.Endpoint = [Uri]::new($config.DetermineServiceOperationEndpoint($getCallerIdentityRequest).URL)
 
     $expirationTime = New-TimeSpan -Seconds 60
     $request.Parameters["X-Amz-Expires"] = [int]$expirationTime.TotalSeconds.ToString([System.Globalization.CultureInfo]::InvariantCulture)
@@ -485,7 +490,7 @@ function Get-EKSToken {
         $immutableCredentials.AccessKey,
         $immutableCredentials.SecretKey,
         $config.AuthenticationServiceName,
-        $Region.SystemName
+        $config.RegionEndpoint.SystemName
     )
 
     # Calculate token expiration
@@ -498,8 +503,8 @@ function Get-EKSToken {
     # Output the URL
     # Write-Output ([System.Web.HttpUtility]::UrlDecode($url))
 
-    $Bytes = [System.Text.Encoding]::UTF8.GetBytes($url)
-    $EncodedText = [Convert]::ToBase64String($Bytes)
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($url)
+    $encodedText = [Convert]::ToBase64String($bytes)
 
     $expirationTimestamp = [DateTime]::new($tokenExpiration.Year, $tokenExpiration.Month, $tokenExpiration.Day, $tokenExpiration.Hour, $tokenExpiration.Minute, $tokenExpiration.Second, $tokenExpiration.Kind)
 
@@ -509,7 +514,7 @@ function Get-EKSToken {
         spec       = @{}
         status     = @{
             expirationTimestamp = $expirationTimestamp #"2024-08-22T12:09:49Z"
-            token               = 'k8s-aws-v1.' + $EncodedText.Replace("=", "")
+            token               = 'k8s-aws-v1.' + $encodedText.Replace("=", "")
         }
     }
 

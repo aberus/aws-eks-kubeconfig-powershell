@@ -8,7 +8,7 @@
     RootModule = 'Aberus.AWS.Tools.EKS.KubeConfig.psm1'
 
     # Version number of this module.
-    ModuleVersion = '4.1.0'
+    ModuleVersion = '5.0.0'
 
     # Supported PSEditions
     CompatiblePSEditions = @('Core', 'Desktop')
@@ -51,11 +51,11 @@ It returns the configured current-context and the path to the updated file, simp
     RequiredModules = @(
         @{
             ModuleName = 'AWS.Tools.EKS';
-            ModuleVersion  = '4.1.0';
+            ModuleVersion  = '5.0.0';
             Guid = 'ee261d25-1f71-432f-848f-345d225b4f18' },
         @{
             ModuleName = 'powershell-yaml';
-            ModuleVersion  = '0.4.7';
+            ModuleVersion  = '0.4.12';
             Guid = '6a75a662-7f53-425a-9777-ee61284407da' }
     )
 
