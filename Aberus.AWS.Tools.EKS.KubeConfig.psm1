@@ -445,20 +445,21 @@ function Get-EKSToken {
     [string]$ProfileLocation
 )
 
-    if (-not $Region) {
-        $Region = Get-DefaultAWSRegion
+    $regionArgs = New-Object Amazon.PowerShell.Common.StandaloneRegionArguments
+    $regionArgs.Region = $Region
+    $regionArgs.ProfileLocation = $ProfileLocation
 
-        if (-not $Region) {
-            Write-Error -Message "No region specified or obtained from persisted/shell defaults." -Category InvalidOperation
-            return
-        }
+    $regionEndpoint = [Amazon.PowerShell.Common.IAWSRegionArgumentsMethods]::GetRegion($regionArgs, $true, $ExecutionContext.SessionState)
+    if (-not $regionEndpoint) {
+        Write-Error -Message "No region specified or obtained from persisted/shell defaults." -Category InvalidOperation
+        return
     }
 
     $credentials = Get-AwsCredential -ProfileName $ProfileName
 
     # Create the STS client configuration
     $config = New-Object Amazon.SecurityToken.AmazonSecurityTokenServiceConfig
-    $config.RegionEndpoint = [Amazon.RegionEndpoint]::GetBySystemName($Region)
+    $config.RegionEndpoint = $regionEndpoint
 
     # Create the GetCallerIdentity request
     $getCallerIdentityRequest = [Amazon.SecurityToken.Model.GetCallerIdentityRequest]::new()
@@ -500,9 +501,6 @@ function Get-EKSToken {
     $authorization = "&" + $signingResult.ForQueryParameters
     $url = [Amazon.Runtime.AmazonServiceClient]::ComposeUrl($request).AbsoluteUri + $authorization
 
-    # Output the URL
-    # Write-Output ([System.Web.HttpUtility]::UrlDecode($url))
-
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($url)
     $encodedText = [Convert]::ToBase64String($bytes)
 
@@ -510,10 +508,10 @@ function Get-EKSToken {
 
     $json = [PSCustomObject]@{
         kind       = 'ExecCredential'
-        apiVersion = 'client.authentication.k8s.io/v1beta1'
+        apiVersion = 'client.authentication.k8s.io/v1'
         spec       = @{}
         status     = @{
-            expirationTimestamp = $expirationTimestamp #"2024-08-22T12:09:49Z"
+            expirationTimestamp = $expirationTimestamp # "2024-08-22T12:09:49Z"
             token               = 'k8s-aws-v1.' + $encodedText.Replace("=", "")
         }
     }
