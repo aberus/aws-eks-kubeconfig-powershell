@@ -194,7 +194,7 @@ function Update-EKSKubeConfig {
     }
 
     if (-not (Test-Path -PathType Leaf $KubeConfigPath)) {
-        New-Item -ItemType File -Path $KubeConfigPath
+        New-Item -ItemType File -Path $KubeConfigPath -Force
     }
 
     # Load existing kubeconfig; create new if not exists
