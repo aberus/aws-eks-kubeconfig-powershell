@@ -341,7 +341,7 @@ function UpdateUser([PSCustomObject]$EksCluster, [ref]$KubeConfig, [string]$Prof
         name = $userName
         user = [ordered]@{
             exec = [ordered]@{
-                apiVersion         = 'client.authentication.k8s.io/v1beta1'
+                apiVersion         = 'client.authentication.k8s.io/v1'
                 args               = @(
                     '-command',
                     "&{ &'Get-EKSToken' -ClusterNameOrId $($clusterIdentificationValue) -ProfileName $($ProfileName) -Region $($region)}"
